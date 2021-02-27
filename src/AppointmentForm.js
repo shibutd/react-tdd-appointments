@@ -10,14 +10,12 @@ const dailyTimeSlots = (salonOpensAt, salonClosesAt) => {
   const totalSlots = (salonClosesAt - salonOpensAt) * 2
   const startTime = new Date().setHours(salonOpensAt, 0, 0, 0)
   const increment = 30 * 60 * 1000
-
   return timeIncrements(totalSlots, startTime, increment)
 }
 
 const weeklyDateValues = (startDate) => {
   const midnight = new Date(startDate).setHours(0, 0, 0, 0)
   const increment = 24 * 60 * 60 * 1000
-
   return timeIncrements(7, midnight, increment)
 }
 
@@ -111,6 +109,9 @@ const TimeSlotTable = ({
 export const AppointmentForm = ({
   selectableServices,
   service,
+  selectableStylists,
+  stylist,
+  serviceStylists,
   onSubmit,
   salonOpensAt,
   salonClosesAt,
@@ -118,12 +119,16 @@ export const AppointmentForm = ({
   availableTimeSlots,
   startsAt
 }) => {
-  const [appointment, setAppointment] = useState({ service, startsAt })
+  const [appointment, setAppointment] = useState({
+    service,
+    stylist,
+    startsAt
+  })
 
-  const handleServiceChange = ({ target }) =>
+  const handleSelectBoxChange = ({ target }) =>
     setAppointment(appointment => ({
       ...appointment,
-      service: target.value
+      [target.name]: target.value
     }))
 
   const handleStartsAtChange = useCallback(({ target }) => {
@@ -133,6 +138,16 @@ export const AppointmentForm = ({
     }))
   }, [])
 
+  const stylistsForService = appointment.service
+    ? serviceStylists[appointment.service]
+    : selectableStylists
+
+  const timeSlotsForStylist = appointment.stylist
+    ? availableTimeSlots.filter(slot =>
+        slot.stylists.includes(appointment.stylist)
+      )
+    : availableTimeSlots
+
   return (
     <form id="appointment" onSubmit={() => onSubmit(appointment)}>
       <label htmlFor="service">Salon service</label>
@@ -140,21 +155,37 @@ export const AppointmentForm = ({
         name="service"
         id="service"
         value={service}
-        onChange={handleServiceChange}
+        onChange={handleSelectBoxChange}
       >
         <option />
         {selectableServices.map(service => (
           <option key={service}>{service}</option>
         ))}
       </select>
+
+      <label htmlFor="stylist">Stylist</label>
+      <select
+        name="stylist"
+        id="stylist"
+        value={stylist}
+        onChange={handleSelectBoxChange}
+      >
+        <option />
+        {stylistsForService.map(stylist => (
+          <option key={stylist}>{stylist}</option>
+        ))}
+      </select>
+
       <TimeSlotTable
         salonOpensAt={salonOpensAt}
         salonClosesAt={salonClosesAt}
         today={today}
-        availableTimeSlots={availableTimeSlots}
+        availableTimeSlots={timeSlotsForStylist}
         checkedTimeSlot={appointment.startsAt}
         handleChange={handleStartsAtChange}
       />
+
+      <input type="submit" value="Add" />
     </form>
   )
 }
@@ -168,6 +199,15 @@ AppointmentForm.defaultProps = {
     'Cut & beard trim',
     'Extensions'
   ],
+  selectableStylists: ['Ashley', 'Jo', 'Pat', 'Sam'],
+  serviceStylists: {
+    'Cut': ['Ashley', 'Jo', 'Pat', 'Sam'],
+    'Blow-dry': ['Ashley', 'Jo', 'Pat', 'Sam'],
+    'Cut & color': ['Ashley', 'Jo'],
+    'Beard trim': ['Pat', 'Sam'],
+    'Cut & beard trim': ['Pat', 'Sam'],
+    'Extensions': ['Ashley', 'Pat']
+  },
   salonOpensAt: 9,
   salonClosesAt: 19,
   today: new Date(),

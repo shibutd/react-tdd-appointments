@@ -19,33 +19,136 @@ describe('AppointmentForm', () => {
     expect(form('appointment')).not.toBeNull()
   })
 
-  describe('service field', () => {
-    const selectableServices = ['Cut', 'Blow-dry']
+  it('has a submut button', () => {
+    render(<AppointmentForm />)
+    const submitButton = container.querySelector(
+      'input[type="submit"]'
+    )
+    expect(submitButton).not.toBeNull()
+  })
 
-    const field = name => form('appointment').elements[name]
+  const field = name => form('appointment').elements[name]
 
-    const findOption = (dropdownNode, textContent) => {
-      const options = Array.from(dropdownNode.childNodes)
-      return options.find(
-        option => option.textContent === textContent
-      )
-    }
+  const labelFor = formElement =>
+    container.querySelector(`label[for="${formElement}"]`)
 
-    const labelFor = formElement =>
-      container.querySelector(`label[for="${formElement}"]`)
-
+  const itRendersAsASelectBox = fieldName => {
     it('renders as a select box', () => {
       render(<AppointmentForm />)
-      expect(field('service')).not.toBeNull()
-      expect(field('service').tagName).toEqual('SELECT')
+      expect(field(fieldName)).not.toBeNull()
+      expect(field(fieldName).tagName).toEqual('SELECT')
     })
+  }
 
+  const itInitiallyHasABlankValueChosen = fieldName => {
     it('initially has a blank value chosen', () => {
       render(<AppointmentForm />)
-      const firstNode = field('service').childNodes[0]
+      const firstNode = field(fieldName).childNodes[0]
       expect(firstNode.value).toEqual('')
       expect(firstNode.selected).toBeTruthy()
     })
+  }
+
+  const findOption = (dropdownNode, textContent) => {
+    const options = Array.from(dropdownNode.childNodes)
+    return options.find(
+      option => option.textContent === textContent
+    )
+  }
+
+  const itPreselectsExistingValue = (
+    fieldName,
+    props,
+    existingValue
+  ) => {
+    it('pre-selects the existing value', () => {
+      render(
+        <AppointmentForm
+          { ...props }
+          { ...{ [fieldName]: existingValue } }
+        />
+      )
+      const option = findOption(
+        field(fieldName),
+        existingValue
+      )
+      expect(option.selected).toBeTruthy()
+    })
+  }
+
+  const itRendersALabel = (fieldName, text) => {
+    it('renders a label', () => {
+      render(<AppointmentForm />)
+      expect(labelFor(fieldName)).not.toBeNull()
+      expect(labelFor(fieldName).textContent).toEqual(text)
+    })
+  }
+
+  const itAssignsAnIdThatMatchesTheLabelId = fieldName => {
+    it('assigns an id that matches the label id', () => {
+      render(<AppointmentForm />)
+      expect(field(fieldName).id).toEqual(fieldName)
+    })
+  }
+
+  const expectToShowValueOnFormSubmit = (fieledName, value) =>
+    (props) => expect(props[fieledName]).toEqual(value)
+
+  const itSubmitsExistingValue = (fieldName, props) => {
+    it('saves existing value when submitted', async () => {
+      expect.hasAssertions();
+      render(
+        <AppointmentForm
+          {...props}
+          {...{ [fieldName]: 'value' }}
+          onSubmit={
+            expectToShowValueOnFormSubmit(fieldName, 'value')
+          }
+        />
+      );
+      await ReactTestUtils.Simulate.submit(form('appointment'));
+    });
+  };
+
+  const itSubmitsNewValue = (fieldName, props) => {
+    it('saves new value when submitted', async () => {
+      expect.hasAssertions()
+      render(
+        <AppointmentForm
+          { ...props }
+          { ...{ [fieldName]: 'existingValue' } }
+          onSubmit={
+            expectToShowValueOnFormSubmit(fieldName, 'newValue')
+          }
+        />
+      )
+      await ReactTestUtils.Simulate.change(field(fieldName), {
+        target: { value: "newValue", name: fieldName }
+      })
+      await ReactTestUtils.Simulate.submit(form('appointment'))
+    })
+  }
+
+  describe('service field', () => {
+    const selectableServices = ['Cut', 'Blow-dry']
+
+    itRendersAsASelectBox('service')
+    itInitiallyHasABlankValueChosen('service')
+    itPreselectsExistingValue(
+      'service',
+      { selectableServices },
+      'Blow-dry'
+    )
+    itRendersALabel('service', 'Salon service')
+    itAssignsAnIdThatMatchesTheLabelId('service')
+    itSubmitsExistingValue(
+      'service',
+      { serviceStylists: { value: [] } }
+    )
+    itSubmitsNewValue(
+      'service',
+      { serviceStylists: { newValue: [], existingValue: [] } }
+    )
 
     it('lists all salon services', () => {
       render(
@@ -61,61 +164,50 @@ describe('AppointmentForm', () => {
         expect.arrayContaining(selectableServices)
       )
     })
+  })
 
-    it('pre-selects the existing value', () => {
+  describe('stylist field', () => {
+    const selectableStylists = ['Ashley', 'Jo']
+
+    itRendersAsASelectBox('stylist')
+    itInitiallyHasABlankValueChosen('stylist')
+    itPreselectsExistingValue(
+      'stylist',
+      { selectableStylists },
+      'Ashley'
+    )
+    itRendersALabel('stylist', 'Stylist')
+    itAssignsAnIdThatMatchesTheLabelId('stylist')
+    itSubmitsExistingValue(
+      'stylist',
+      { selectableStylists },
+    )
+    itSubmitsNewValue(
+      'stylist',
+      { selectableStylists },
+    )
+
+    it('lists only stylists that can perform the selected service', () => {
+      const selectableServices = ['1', '2']
+      const selectableStylists = ['A', 'B', 'C']
+      const serviceStylists = { '1': ['A', 'B'] }
+
       render(
         <AppointmentForm
-          selectableServices={selectableServices}
-          service="Blow-dry"
+          { ...{selectableServices, selectableStylists, serviceStylists} }
         />
       )
-      const option = findOption(
-        field('service'),
-        'Blow-dry'
-      )
-      expect(option.selected).toBeTruthy()
-    })
-
-    it('renders a label', () => {
-      render(<AppointmentForm />)
-      expect(labelFor('service')).not.toBeNull()
-      expect(labelFor('service').textContent).toEqual(
-        "Salon service")
-    })
-
-    it('assigns an id that matches the label id', () => {
-      render(<AppointmentForm />)
-      expect(field('service').id).toEqual('service')
-    })
-
-    const expectToShowServiceOnFormSubmit = (value) =>
-      ({ service }) => expect(service).toEqual(value)
-
-    it('saves existing value when submitted', async () => {
-      expect.hasAssertions()
-      render(
-        <AppointmentForm
-          selectableServices={selectableServices}
-          service="Blow-dry"
-          onSubmit={expectToShowServiceOnFormSubmit("Blow-dry")}
-        />
-      )
-      await ReactTestUtils.Simulate.submit(form('appointment'))
-    })
-
-    it('saves new value when submitted', async () => {
-      expect.hasAssertions()
-      render(
-        <AppointmentForm
-          selectableServices={selectableServices}
-          service="Blow-dry"
-          onSubmit={expectToShowServiceOnFormSubmit("Cut")}
-        />
-      )
-      await ReactTestUtils.Simulate.change(field('service'), {
-        target: { value: "Cut", name: 'service' }
+      ReactTestUtils.Simulate.change(field('service'), {
+        target: { value: '1', name: 'service' }
       })
-      await ReactTestUtils.Simulate.submit(form('appointment'))
+
+      const optionNodes = Array.from(field('stylist').childNodes)
+      const renderedServices = optionNodes.map(
+        node => node.textContent
+      )
+      expect(renderedServices).toEqual(
+        expect.arrayContaining(['A', 'B'])
+      )
     })
   })
 
@@ -223,9 +315,6 @@ describe('AppointmentForm', () => {
       expect(startsAtField(0).checked).toEqual(true)
     })
 
-    const expectToShowStartsAtTimeOnFormSubmit = (value) =>
-      ({ startsAt }) => expect(startsAt).toEqual(value)
-
     it('saves existing value when submitted', async () => {
       expect.hasAssertions()
       render(
@@ -234,8 +323,8 @@ describe('AppointmentForm', () => {
           today={today}
           startsAt={availableTimeSlots[0].startsAt}
           onSubmit={
-            expectToShowStartsAtTimeOnFormSubmit(
-              availableTimeSlots[0].startsAt
+            expectToShowValueOnFormSubmit(
+              'startsAt', availableTimeSlots[0].startsAt
             )
           }
         />
@@ -251,8 +340,8 @@ describe('AppointmentForm', () => {
           today={today}
           startsAt={availableTimeSlots[0].startsAt}
           onSubmit={
-            expectToShowStartsAtTimeOnFormSubmit(
-              availableTimeSlots[1].startsAt
+            expectToShowValueOnFormSubmit(
+              'startsAt', availableTimeSlots[1].startsAt
             )
           }
         />
@@ -266,5 +355,34 @@ describe('AppointmentForm', () => {
       ReactTestUtils.Simulate.submit(form('appointment'))
     })
 
+    it('filetrs appointments by selected slylists', () => {
+      const availableTimeSlots = [
+        {
+          startsAt: today.setHours(9, 0, 0, 0),
+          stylists: ['A', 'B']
+        },
+        {
+          startsAt: today.setHours(9, 30, 0, 0),
+          stylists: ['A']
+        }
+      ]
+      render(
+        <AppointmentForm
+          availableTimeSlots={availableTimeSlots}
+          today={today}
+        />
+      )
+      ReactTestUtils.Simulate.change(field('stylist'), {
+        target: { value: 'B', name: 'stylist' }
+      })
+
+      const cells = timeSlotTable().querySelectorAll('td')
+      expect(
+        cells[0].querySelector('input[type="radio"]')
+      ).not.toBeNull()
+      expect(
+        cells[7].querySelector('input[type="radio"]')
+      ).toBeNull()
+    })
   })
 })
